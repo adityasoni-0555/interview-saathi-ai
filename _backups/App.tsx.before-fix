@@ -1,0 +1,947 @@
+
+import { useState, useEffect } from "react";
+import { supabase } from "./lib/supabase";
+import {
+  LayoutDashboard,
+  BookOpen,
+  Code2,
+  Target,
+  BriefcaseBusiness,
+  FolderKanban,
+  Video,
+  Settings,
+  Plus,
+  Check,
+  Clock,
+  Flame,
+  TrendingUp,
+  Search,
+  Menu,
+  X,
+  Circle,
+  CalendarDays,
+  ExternalLink,
+  Trash2,
+} from "lucide-react";
+import "./App.css";
+
+type Task = {
+  id: number;
+  title: string;
+  category: string;
+  minutes: number;
+  done: boolean;
+};
+
+type Habit = {
+  id: number;
+  name: string;
+  icon: string;
+  done: boolean;
+};
+
+const initialTasks: Task[] = [
+  {
+    id: 1,
+    title: "Complete C++ practice",
+    category: "Coding",
+    minutes: 60,
+    done: false,
+  },
+  {
+    id: 2,
+    title: "Study DBMS and SQL",
+    category: "Study",
+    minutes: 45,
+    done: false,
+  },
+  {
+    id: 3,
+    title: "Practice Python",
+    category: "Learning",
+    minutes: 30,
+    done: false,
+  },
+  {
+    id: 4,
+    title: "Work on personal project",
+    category: "Project",
+    minutes: 60,
+    done: false,
+  },
+];
+
+const initialHabits: Habit[] = [
+  { id: 1, name: "Study for 2 hours", icon: "📚", done: false },
+  { id: 2, name: "Practice coding", icon: "💻", done: false },
+  { id: 3, name: "Read 10 pages", icon: "📖", done: false },
+  { id: 4, name: "Exercise / walk", icon: "🏃", done: false },
+  { id: 5, name: "Create content", icon: "🎥", done: false },
+];
+
+const navItems = [
+  { name: "Dashboard", icon: LayoutDashboard },
+  { name: "Study Planner", icon: BookOpen },
+  { name: "Coding & DSA", icon: Code2 },
+  { name: "Habits", icon: Target },
+  { name: "Career", icon: BriefcaseBusiness },
+  { name: "Projects", icon: FolderKanban },
+  { name: "Content Studio", icon: Video },
+  { name: "Resources", icon: ExternalLink },
+];
+
+const resources = [
+  {
+    name: "C++ Programming",
+    description: "Learn C++ fundamentals and object-oriented programming.",
+    url: "https://www.learncpp.com/",
+    category: "Coding",
+  },
+  {
+    name: "Data Structures & Algorithms",
+    description: "Practice DSA concepts and problem solving.",
+    url: "https://takeuforward.org/",
+    category: "Coding",
+  },
+  {
+    name: "Python Tutorial",
+    description: "Official Python documentation and tutorials.",
+    url: "https://docs.python.org/3/tutorial/",
+    category: "Data",
+  },
+  {
+    name: "SQL Course",
+    description: "Free SQL course with lessons and exercises.",
+    url: "https://cs50.harvard.edu/sql/",
+    category: "Database",
+  },
+  {
+    name: "Git and GitHub",
+    description: "Learn version control with the Pro Git book.",
+    url: "https://git-scm.com/book/en/v2",
+    category: "Development",
+  },
+  {
+    name: "Web Development",
+    description: "Learn HTML, CSS, JavaScript and web development.",
+    url: "https://developer.mozilla.org/en-US/docs/Learn_web_development",
+    category: "Development",
+  },
+  {
+    name: "AI and Machine Learning",
+    description: "Explore beginner-friendly AI and ML courses.",
+    url: "https://www.freecodecamp.org/learn/",
+    category: "AI / ML",
+  },
+  {
+    name: "Digital Marketing",
+    description: "Learn digital marketing through Google's training.",
+    url: "https://skillshop.withgoogle.com/",
+    category: "Career",
+  },
+];
+
+function App() {
+    const [session, setSession] = useState<any>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [isRecovery, setIsRecovery] = useState(false);
+  const handleSignOut = async () => {
+  const { error } = await supabase.auth.signOut();
+
+  if (error) {
+    setAuthError(error.message);
+  } else {
+    setSession(null);
+  }
+};
+   useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+   const {
+  data: { subscription },
+} = supabase.auth.onAuthStateChange((event, session) => {
+  setSession(session);
+
+  if (event === "PASSWORD_RECOVERY") {
+    setIsRecovery(true);
+    setAuthError("");
+  }
+});
+
+    return () => subscription.unsubscribe();
+  }, []);
+  const [activePage, setActivePage] = useState("Dashboard");
+  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const [habits, setHabits] = useState<Habit[]>(initialHabits);
+  const [newTask, setNewTask] = useState("");
+  const [newMinutes, setNewMinutes] = useState("30");
+  const [search, setSearch] = useState("");
+  const [mobileMenu, setMobileMenu] = useState(false);
+  const [showTaskForm, setShowTaskForm] = useState(false);
+
+  const handleSignIn = async (event: any) => {
+    event.preventDefault();
+    setAuthLoading(true);
+    setAuthError("");
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setAuthError(error.message);
+    }
+
+    setAuthLoading(false);
+  };
+
+  const handleSignUp = async () => {
+    setAuthLoading(true);
+    setAuthError("");
+
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (error) {
+      setAuthError(error.message);
+    } else {
+      setAuthError(
+        "Account created! Please check your email to confirm your account."
+      );
+    }
+
+    setAuthLoading(false);
+  };
+  const completedTasks = tasks.filter((task) => task.done).length;
+  const completedHabits = habits.filter((habit) => habit.done).length;
+  const totalMinutes = tasks
+    .filter((task) => task.done)
+    .reduce((sum, task) => sum + task.minutes, 0);
+
+  const progress =
+    tasks.length > 0
+      ? Math.round((completedTasks / tasks.length) * 100)
+      : 0;
+
+  const date = new Date().toLocaleDateString("en-IN", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+  function toggleTask(id: number) {
+    setTasks((current) =>
+      current.map((task) =>
+        task.id === id ? { ...task, done: !task.done } : task
+      )
+    );
+  }
+
+  function toggleHabit(id: number) {
+    setHabits((current) =>
+      current.map((habit) =>
+        habit.id === id ? { ...habit, done: !habit.done } : habit
+      )
+    );
+  }
+
+ 
+
+  const task = {
+    user_id: session.user.id,
+    title: newTask.trim(),
+    category: "Personal",
+    minutes: Math.max(0, Number(newMinutes) || 0),
+    done: false,
+  };
+
+  const { data, error } = await supabase
+    .from("tasks")
+    .insert(task)
+    .select()
+    .single();
+
+  if (error) {
+    setAuthError(error.message);
+    return;
+  }
+
+  setTasks((current) => [
+    ...current,
+    {
+      id: data.id,
+      title: data.title,
+      category: data.category,
+      minutes: data.minutes,
+      done: data.done,
+    },
+  ]);
+
+  setNewTask("");
+  setNewMinutes("30");
+}
+    setTasks((current) => [...current, task]);
+    setNewTask("");
+    setNewMinutes("30");
+    setShowTaskForm(false);
+  }
+
+   async function addTask() {
+  if (!newTask.trim()) return;
+
+  if (!session?.user?.id) {
+    setAuthError("Please sign in first.");
+    return;
+  }
+
+  function renderDashboard() {
+    return (
+      <>
+        <div className="welcome">
+          <div>
+            <div className="eyebrow">
+              <span className="live-dot" /> YOUR PERSONAL COMMAND CENTER
+            </div>
+            <h1>Let's get things done, Aditya.</h1>
+            <p className="muted">
+              Build your skills. Track your progress. Create your future.
+            </p>
+          </div>
+          <div className="date-chip">
+            <CalendarDays size={17} />
+            {date}
+          </div>
+        </div>
+
+        <div className="stats-grid">
+          <div className="stat-card">
+            <div className="stat-top">
+              <span>Tasks completed</span>
+              <div className="stat-icon purple">
+                <Check size={19} />
+              </div>
+            </div>
+            <div className="stat-value">
+              {completedTasks}
+              <span> / {tasks.length}</span>
+            </div>
+            <div className="stat-foot">Today's task progress</div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-top">
+              <span>Study time</span>
+              <div className="stat-icon blue">
+                <Clock size={19} />
+              </div>
+            </div>
+            <div className="stat-value">
+              {Math.floor(totalMinutes / 60)}
+              <span>h </span>
+              {totalMinutes % 60}
+              <span>m</span>
+            </div>
+            <div className="stat-foot">
+              Based on completed task estimates
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-top">
+              <span>Habits completed</span>
+              <div className="stat-icon green">
+                <Flame size={19} />
+              </div>
+            </div>
+            <div className="stat-value">
+              {completedHabits}
+              <span> / {habits.length}</span>
+            </div>
+            <div className="stat-foot">Daily habits checklist</div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-top">
+              <span>Daily progress</span>
+              <div className="stat-icon orange">
+                <TrendingUp size={19} />
+              </div>
+            </div>
+            <div className="stat-value">
+              {progress}
+              <span>%</span>
+            </div>
+            <div className="progress-track">
+              <div
+                className="progress-fill"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="dashboard-grid">
+          <section className="panel tasks-panel">
+            <div className="panel-header">
+              <div>
+                <div className="panel-title">Today's Tasks</div>
+                <div className="panel-subtitle">
+                  Focus on what matters today.
+                </div>
+              </div>
+              <button
+                className="primary-btn"
+                onClick={() => setShowTaskForm(!showTaskForm)}
+              >
+                <Plus size={17} />
+                Add task
+              </button>
+            </div>
+
+            {showTaskForm && (
+              <form
+                className="task-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  addTask();
+                }}
+              >
+                <input
+                  value={newTask}
+                  onChange={(event) => setNewTask(event.target.value)}
+                  placeholder="What do you need to do?"
+                  autoFocus
+                />
+                <input
+                  type="number"
+                  min="0"
+                  value={newMinutes}
+                  onChange={(event) => setNewMinutes(event.target.value)}
+                  placeholder="Minutes"
+                />
+                <button className="primary-btn" type="submit">
+                  Add
+                </button>
+              </form>
+            )}
+
+            <div className="task-list">
+              {tasks.length === 0 && (
+                <div className="empty-state">
+                  No tasks yet. Add your first task!
+                </div>
+              )}
+
+              {tasks.map((task) => (
+                <div className="task-row" key={task.id}>
+                  <button
+                    className={`task-check ${task.done ? "checked" : ""}`}
+                    onClick={() => toggleTask(task.id)}
+                    aria-label="Toggle task"
+                  >
+                    {task.done && <Check size={15} />}
+                  </button>
+                  <div className="task-content">
+                    <div className={`task-name ${task.done ? "done" : ""}`}>
+                      {task.title}
+                    </div>
+                    <div className="task-meta">
+                      <span>{task.category}</span>
+                      <span>·</span>
+                      <span>{task.minutes} min</span>
+                    </div>
+                  </div>
+                  <button
+                    className="icon-btn delete-btn"
+                    onClick={() => deleteTask(task.id)}
+                    aria-label="Delete task"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="panel">
+            <div className="panel-header">
+              <div>
+                <div className="panel-title">Daily Habits</div>
+                <div className="panel-subtitle">
+                  Small actions, big results.
+                </div>
+              </div>
+              <span className="count-badge">
+                {completedHabits}/{habits.length}
+              </span>
+            </div>
+
+            <div className="habit-list">
+              {habits.map((habit) => (
+                <button
+                  key={habit.id}
+                  className={`habit-row ${habit.done ? "habit-done" : ""}`}
+                  onClick={() => toggleHabit(habit.id)}
+                >
+                  <span className="habit-emoji">{habit.icon}</span>
+                  <span className="habit-name">{habit.name}</span>
+                  <span className={`habit-check ${habit.done ? "checked" : ""}`}>
+                    {habit.done && <Check size={14} />}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <section className="panel focus-panel">
+          <div>
+            <div className="eyebrow">YOUR NEXT MOVE</div>
+            <h2>Consistency beats motivation.</h2>
+            <p className="muted">
+              Complete one important task today. Then repeat tomorrow.
+            </p>
+          </div>
+          <button
+            className="primary-btn"
+            onClick={() => setActivePage("Resources")}
+          >
+            Explore resources <ExternalLink size={16} />
+          </button>
+        </section>
+      </>
+    );
+  }
+
+  function renderResources() {
+    const filtered = resources.filter((resource) =>
+      `${resource.name} ${resource.category} ${resource.description}`
+        .toLowerCase()
+        .includes(search.toLowerCase())
+    );
+
+    return (
+      <>
+        <div className="page-heading">
+          <div className="eyebrow">LEARN SOMETHING EVERY DAY</div>
+          <h1>Resource Library</h1>
+          <p className="muted">
+            Curated learning links for your coding, college and career journey.
+          </p>
+        </div>
+
+        <div className="search-box">
+          <Search size={18} />
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search courses, skills or topics..."
+          />
+        </div>
+
+        <div className="resource-grid">
+          {filtered.map((resource) => (
+            <a
+              className="resource-card"
+              href={resource.url}
+              target="_blank"
+              rel="noreferrer"
+              key={resource.name}
+            >
+              <div className="resource-top">
+                <span className="resource-category">{resource.category}</span>
+                <ExternalLink size={17} />
+              </div>
+              <h3>{resource.name}</h3>
+              <p>{resource.description}</p>
+              <div className="resource-link">
+                Open course <ExternalLink size={14} />
+              </div>
+            </a>
+          ))}
+        </div>
+      </>
+    );
+  }
+
+  function renderOtherPage() {
+    const descriptions: Record<string, string> = {
+      "Study Planner":
+        "Organize your BCA subjects, assignments and study sessions.",
+      "Coding & DSA":
+        "Track C++, Python, SQL and data structures practice.",
+      Habits: "Build routines and track your daily consistency.",
+      Career: "Track internships, applications and career milestones.",
+      Projects: "Manage your personal, college and portfolio projects.",
+      "Content Studio":
+        "Collect video ideas, scripts and content creation plans.",
+    };
+
+    return (
+      <div className="coming-soon panel">
+        <div className="coming-icon">
+          <Circle size={32} />
+        </div>
+        <div className="eyebrow">ADITYA OS MODULE</div>
+        <h1>{activePage}</h1>
+        <p className="muted">
+          {descriptions[activePage] ??
+            "Your personal workspace for this module."}
+        </p>
+        <span className="coming-badge">Module coming next</span>
+        <button
+          className="primary-btn"
+          onClick={() => setActivePage("Dashboard")}
+        >
+          Back to dashboard
+        </button>
+      </div>
+    );
+  }
+if (isRecovery) {
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        background: "#0f172a",
+        color: "white",
+        fontFamily: "Arial",
+      }}
+    >
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+
+          if (password.length < 6) {
+            setAuthError("Password must be at least 6 characters.");
+            return;
+          }
+
+          setAuthLoading(true);
+          setAuthError("");
+
+          const { error } = await supabase.auth.updateUser({
+            password: password,
+          });
+
+          setAuthLoading(false);
+
+          if (error) {
+            setAuthError(error.message);
+          } else {
+            setIsRecovery(false);
+            setPassword("");
+            setAuthError("Password updated successfully! Please sign in.");
+          }
+        }}
+        style={{
+          width: "320px",
+          padding: "30px",
+          borderRadius: "16px",
+          background: "#1e293b",
+        }}
+      >
+        <h2>Reset Password</h2>
+
+        <p>Enter your new password below.</p>
+
+        <input
+          type="password"
+          placeholder="New password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          minLength={6}
+          required
+          style={{
+            width: "100%",
+            padding: "12px",
+            marginBottom: "12px",
+            boxSizing: "border-box",
+          }}
+        />
+
+        {authError && <p>{authError}</p>}
+
+        <button
+          type="submit"
+          disabled={authLoading}
+          style={{
+            width: "100%",
+            padding: "12px",
+            cursor: "pointer",
+          }}
+        >
+          {authLoading ? "Updating..." : "Update Password"}
+        </button>
+      </form>
+    </div>
+  );
+}
+    if (!session) {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        background: "#0f172a",
+        color: "white",
+        fontFamily: "Arial",
+      }}>
+        <form
+          onSubmit={handleSignIn}
+          style={{
+            width: "320px",
+            padding: "30px",
+            borderRadius: "16px",
+            background: "#1e293b",
+          }}
+        >
+          <h1>Aditya OS</h1>
+          <p>Sign in to your personal dashboard</p>
+
+          <input
+            type="email"
+            placeholder="Email address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            style={{
+              width: "100%",
+              padding: "12px",
+              marginBottom: "12px",
+              boxSizing: "border-box",
+            }}
+          />
+
+          <input
+            type="password"
+            placeholder="Password (minimum 6 characters)"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={6}
+            style={{
+              width: "100%",
+              padding: "12px",
+              marginBottom: "16px",
+              boxSizing: "border-box",
+            }}
+          />
+
+          <button
+            type="submit"
+            disabled={authLoading}
+            style={{
+              width: "100%",
+              padding: "12px",
+              cursor: "pointer",
+            }}
+          >
+            {authLoading ? "Please wait..." : "Sign In"}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleSignUp}
+            disabled={authLoading}
+            style={{
+              width: "100%",
+              padding: "12px",
+              marginTop: "10px",
+              cursor: "pointer",
+            }}
+          >
+    {authLoading ? "Please wait..." : "Sign Up"}        
+          </button>
+
+          {authError && (
+            <p style={{
+              marginTop: "16px",
+              overflowWrap: "anywhere",
+              fontSize: "14px",
+            }}>
+              {authError}
+            </p>
+          )}
+          <button
+  type="button"
+  onClick={async () => {
+    if (!email) {
+      setAuthError("Please enter your email first.");
+      return;
+    }
+
+    setAuthLoading(true);
+    setAuthError("");
+
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      email,
+      { redirectTo: window.location.origin }
+    );
+
+    if (error) {
+      setAuthError(error.message);
+    } else {
+      setAuthError("Password reset link sent! Check your email.");
+    }
+
+    setAuthLoading(false);
+  }}
+  disabled={authLoading}
+  style={{
+    width: "100%",
+    padding: "12px",
+    marginTop: "10px",
+    cursor: "pointer",
+  }}
+>
+  Forgot Password?
+</button>
+        </form>
+      </div>
+    );
+  }
+  return (
+    <div className="app-shell">
+      {mobileMenu && (
+        <button
+          className="mobile-overlay"
+          onClick={() => setMobileMenu(false)}
+          aria-label="Close menu"
+        />
+      )}
+
+      <aside className={`sidebar ${mobileMenu ? "sidebar-open" : ""}`}>
+        <div className="brand">
+          <div className="brand-logo">A</div>
+          <div>
+            <div className="brand-name">ADITYA OS</div>
+            <div className="brand-sub">PERSONAL WORKSPACE</div>
+          </div>
+          <button
+            className="icon-btn mobile-close"
+            onClick={() => setMobileMenu(false)}
+          >
+            <X size={19} />
+          </button>
+        </div>
+
+        <div className="profile-card">
+          <div className="avatar">AS</div>
+          <div>
+            <div className="profile-name">Aditya Soni</div>
+            <div className="profile-role">BCA AIDA · Student</div>
+          </div>
+          <span className="online-dot" />
+        </div>
+
+        <div className="nav-label">WORKSPACE</div>
+        <nav className="nav-list">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.name}
+                className={`nav-item ${
+                  activePage === item.name ? "nav-active" : ""
+                }`}
+                onClick={() => {
+                  setActivePage(item.name);
+                  setMobileMenu(false);
+                }}
+              >
+                <Icon size={19} strokeWidth={1.8} />
+                <span>{item.name}</span>
+                {item.name === "Dashboard" && (
+                  <span className="nav-dot" />
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="sidebar-bottom">
+          <div className="sidebar-tip">
+            <div className="tip-icon">✦</div>
+            <div className="tip-title">Keep showing up.</div>
+            <p>Every small step moves you forward.</p>
+          </div>
+          <button
+            className={`nav-item ${
+              activePage === "Settings" ? "nav-active" : ""
+            }`}
+            onClick={() => setActivePage("Settings")}
+          >
+            <Settings size={19} />
+            <span>Settings</span>
+          </button>
+          <div className="version">ADITYA OS · VERSION 1.0</div>
+        </div>
+      </aside>
+
+      <main className="main-area">
+        <header className="topbar">
+          <div className="topbar-left">
+            <button
+              className="icon-btn menu-toggle"
+              onClick={() => setMobileMenu(true)}
+            >
+              <Menu size={21} />
+            </button>
+            <div className="breadcrumb">
+              Workspace <span>/</span> <strong>{activePage}</strong>
+            </div>
+          </div>
+          <div className="topbar-right">
+            <span className="status-pill">
+              <span className="live-dot" /> System active
+            </span>
+            <button
+  onClick={handleSignOut}
+  style={{
+    padding: "8px 16px",
+    background: "#dc2626",
+    color: "white",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    marginRight: "12px"
+  }}
+>
+  Logout
+</button>
+            <div className="top-avatar">AS</div>
+          </div>
+        </header>
+
+        <div className="page-content">
+          {activePage === "Dashboard"
+            ? renderDashboard()
+            : activePage === "Resources"
+              ? renderResources()
+              : renderOtherPage()}
+
+          <footer className="footer">
+            <span>© 2026 Aditya OS</span>
+            <span>Built for focus. Designed for growth.</span>
+          </footer>
+        </div>
+      </main>
+    </div>
+  );
+
+
+export default App;
